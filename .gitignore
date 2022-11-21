@@ -3,11 +3,14 @@
 *.shp
 *.shx
 *.json
+*.txt
+*.geojson
 /data/*.csv
 /data/*.xlsx
 /data/*.shp
 /data/*.shx
 /data/*.json
+/data/*.geojson
 /data/
 /data
 
