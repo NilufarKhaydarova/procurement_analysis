@@ -159,9 +159,9 @@ def update_bar(n_clicks, cat_pick):
                      color_continuous_scale='ice', 
                      )
 
-    fig_bar.update_layout(width=500,
-                          height=340,
-                          margin=dict(l=40, r=20, t=20, b=30),
+    fig_bar.update_layout(width=600,
+                          height=400,
+                          margin=dict(l=20, r=20, t=0, b=0),
                           paper_bgcolor='rgba(0,0,0,0)',
                           plot_bgcolor='rgba(0,0,0,0)',
                           legend_title=None,
@@ -194,9 +194,9 @@ def tail_10(n_clicks, cont_pick):
                      y=bar_df.index, color=bar_df.values,
                     color_continuous_scale='ice')
 
-    fig_bar.update_layout(width=500,
-                          height=340,
-                          margin=dict(l=40, r=20, t=20, b=30),
+    fig_bar.update_layout(width=600,
+                          height=400,
+                          margin=dict(l=20, r=20, t=0, b=0),
                           paper_bgcolor='rgba(0,0,0,0)',
                           plot_bgcolor='rgba(0,0,0,0)',
                           legend_title=None,
@@ -218,30 +218,8 @@ def tail_10(n_clicks, cont_pick):
 @app.callback(Output('corr-chart', 'figure'),
               Input('my-button', 'n_clicks'),
               State('my-corr-picker', 'value'))
-def update_corr(n_clicks, corr_pick):
-    df_corr = df[['tovar_name', 'summa', 'vendor_name', 'contract_dat', 'name']]
-    corr = df_corr.corr('pearson')
-    x = list(corr.columns)
-    y = list(corr.index)
-    z = corr.values
-
-    fig_corr = ff.create_annotated_heatmap(
-        z,
-        x=x,
-        y=y,
-        annotation_text=np.around(z, decimals=2),
-        hoverinfo='z',
-        colorscale='ice'
-    )
-
-    fig_corr.update_layout(width=1040,
-                           height=300,
-                           margin=dict(l=40, r=20, t=20, b=20),
-                           paper_bgcolor='rgba(0,0,0,0)'
-                           )
-
-    return fig_corr
-
+def update_map(n_clicks, corr_pick):
+    
     
 #run the server
 if __name__ == "__main__":
