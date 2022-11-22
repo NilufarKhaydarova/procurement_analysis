@@ -220,6 +220,7 @@ def tail_10(n_clicks, cont_pick):
               State('my-corr-picker', 'value'))
 def update_map(n_clicks, corr_pick):
     
+    pass
     
 #run the server
 if __name__ == "__main__":
