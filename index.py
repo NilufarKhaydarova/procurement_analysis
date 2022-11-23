@@ -24,10 +24,19 @@ df['contract_dat'] = df['contract_dat'].dt.strftime('%Y-%m-%d')
 df['contract_dat'] = pd.to_datetime(df['contract_dat'])
 
 #choropleth
-with open('data/UZB_ADM2.geojson') as f:
+with open('data/geo.json') as f:
     geo_data = json.load(f)
 
-print(geo_data['features'][0]['properties']['name'])
+print(geo_data['features'][0].keys())
+
+print(geo_data['features'][0]['geometry'].keys())
+
+print(geo_data['features'][0]['geometry']['coordinates'][0][0])
+
+chart_1 = df.groupby('tovar_name')['summa'].sum().sort_values(ascending=False).head(10)
+print(chart_1)
+
+
 
 #columnss
 vendor_terr = df['vendor_terr'].unique()
@@ -38,16 +47,17 @@ months_names = [month_dict[elem] for elem in months]
 
 name = df['name'].unique()
 
-counts = df.vendor_terr.value_counts()
+counts = df.vendor_terr.value_counts()  
 counts = counts.reset_index()
+
 df['counts'] = df['vendor_terr'].map(counts.set_index('index')['vendor_terr'])
 
 #plot choropleth
-fig = px.choropleth(df, geojson=geo_data, locations='vendor_terr', color='counts', color_continuous_scale="Viridis",
+fig = px.choropleth_mapbox(df, geojson=geo_data, locations='id_y', featureidkey='properties.vendor_terr', color='counts', color_continuous_scale="Viridis",
                             range_color=(df['counts'].min(), df['counts'].max()),               
                             mapbox_style="carto-positron", zoom=5, 
-                            opacity=0.5,
-                            labels={'contract_dat':'Date of contract'}
+                            opacity=0.5, center={"lat": 41.377491, "lon": 64.585262},
+                            labels={'contract_dat':'Date of contract'},
                             )
 fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
 
@@ -62,16 +72,14 @@ app.layout = html.Div([
                 html.H3('Выберите регион'),
                 dcc.Dropdown(
                     id='vendor_terr',
-                    options=[{'label': i, 'value': i} for i in name],
-                    value='Андижанская область'
+                    options=[{'label': i, 'value': i} for i in name]
                 ),
             ], style={'width': '48%', 'display': 'inline-block', 'margin-left': '18'}),
             html.Div([
                 html.H3('Выберите месяц'),
                 dcc.Dropdown(
                     id='month',
-                    options=[{'label': i, 'value': i} for i in months_names],
-                    value='Январь'
+                    options=[{'label': i, 'value': i} for i in months_names]
                 ),
             ], style={'width': '48%', 'display': 'inline-block', 'margin-left': '18'}),
         ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'}),
@@ -100,7 +108,7 @@ app.layout = html.Div([
         Input('month', 'value')])   
 
 def update_graph(vendor_terr, month):
-    fig = px.bar(df, x='vendor_terr', y='contracts', color='vendor_terr')
+    fig = px.bar(x=chart_1.index, y=chart_1.values, color = chart_1.values, orientation='h', title='Количество контрактов')
     return fig
 
 
