@@ -5,6 +5,7 @@ import pandas as pd
 import dash
 from dash.dependencies import Input, Output, State
 from dash import html, dcc
+import dash_bootstrap_components as dbc
 
 #for plotting choropleth
 import plotly.graph_objects as go
@@ -35,10 +36,9 @@ months_names = [month_dict[elem] for elem in months]
 df['month'] = df['contract_dat'].dt.month
 df['month'] = df['month'].apply(lambda x: month_dict[x])
 
-print(df.info())
-print(df.head(1))
+df['year'] = df['contract_dat'].dt.year
 
-name = df['name'].unique()
+
 
 #some preprocessing
 counts = df.vendor_terr.value_counts()  
@@ -50,15 +50,25 @@ df['counts'] = df['vendor_terr'].map(counts.set_index('index')['vendor_terr'])
 with open('data/geo.json') as f:
     geo_data = json.load(f)
 
-#callback map
-fig = px.choropleth_mapbox(df, geojson=geo_data, locations='id_y', featureidkey='properties.vendor_terr', color='counts', color_continuous_scale="icefire",
-                            range_color=(df['counts'].min(), df['counts'].max()),               
-                            mapbox_style="carto-positron", zoom=5, 
-                            opacity=0.5, center={"lat": 41.377491, "lon": 64.585262},
-                            labels={'contract_dat':'Date of contract'},
-                            )
-fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-fig.update_geos(fitbounds="locations", visible=True)
+
+#define navbar
+def Navbar():
+
+    layout = html.Div([
+        dbc.NavbarSimple(
+            children=[
+                dbc.NavItem(dbc.NavLink("Page 1", href="/page1")),
+                dbc.NavItem(dbc.NavLink("Page 2", href="/page2")),
+            ] ,
+            brand="Multipage Dash App",
+            brand_href="/page1",
+            color="dark",
+            dark=True,
+        ), 
+    ])
+
+    return layout
+
 
 #layout for 4 charts and 1 choropleth
 app.layout = html.Div([
@@ -70,59 +80,78 @@ app.layout = html.Div([
             html.Div([
                 html.H3('Выберите регион'),
                 dcc.Dropdown(
-                    id='vendor_terr',
-                    options=[{'label': i, 'value': i} for i in name]
+                    id='name',
+                    options=[{'label': i, 'value': i} for i in df.name.unique()]
                 ),
-            ], style={'width': '24%', 'display': 'inline-block', 'margin-left': '18'}),
+            ], style={'width': '16%', 'display': 'inline-block', 'margin-left': '16'}),
+
             html.Div([
                 html.H3('Выберите месяц'),
                 dcc.Dropdown(
                     id='month',
                     options=[{'label': i, 'value': i} for i in months_names]
                 ),
-            ], style={'width': '24%', 'display': 'inline-block', 'margin-left': '18'}),
+            
+            ], style={'width': '16%', 'display': 'inline-block', 'margin-left': '16'}),
+
+            html.Div([
+                html.H3('Выберите год'),
+                dcc.Dropdown(
+                    id='year',
+                    options=[{'label': i, 'value': i} for i in df.year.unique()],
+                    value=2022
+                ),
+            ], style={'width': '16%', 'display': 'inline-block', 'margin-left': '16'}),
+
             html.Div([
                 html.H3('Выберите товар'),
                 dcc.Dropdown(
                     id='tovar_name',
-                    options=[{'label': i, 'value': i} for i in df['tovar_name'].unique()]
+                    options=[{'label': i, 'value': i} for i in df['tovar_name'].unique()],
+                    value='Бензин автомобильный'
                 ),
-            ], style={'width': '24%', 'display': 'inline-block', 'margin-left': '18'}),
+            ], style={'width': '16%', 'display': 'inline-block', 'margin-left': '16'}),
+
             html.Div([
                 html.H3('Выберите биржу'),
                 dcc.Dropdown(
                     id='etp_id',
                     options=[{'label': i, 'value': i} for i in df['etp_id'].unique()]
                 ),
-            ], style={'width': '24%', 'display': 'inline-block', 'margin-left': '18'}),
+            ], style={'width': '16%', 'display': 'inline-block', 'margin-left': '16'}),
 
-        ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'}),
+            html.Div([
+                html.H3('Выберите поставщика'),
+                dcc.Dropdown(
+                    id='vendor_name',
+                    options=[{'label': i, 'value': i} for i in df['vendor_name'].unique()]
+                ),
+            ], style={'width': '16%', 'display': 'inline-block', 'margin-left': '16'}),
+        ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '16'}),
+
         html.Div([
             html.Div([
-                html.H3('Eng ko\'p sotiladigan tovarlar 10taligi'),
                 dcc.Graph(id='top_10')
             ], style={'width': '48%', 'display': 'inline-block', 'margin-left': '18'}),
             html.Div([
-                html.H3('Eng qimmat tovarlar 10taligi'),
                 dcc.Graph(id='price_10')
             ], style={'width': '48%', 'display': 'inline-block', 'margin-left': '18'}),
         ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'}),
+
         html.Div([
             html.Div([
-                html.H3('Monoblok oylar bo\'yicha narxi'),
                 dcc.Graph(id='bar_line_chart')
             ], style={'width': '48%', 'display': 'inline-block', 'margin-left': '18'}),
             html.Div([
-                html.H3('Monoblok har bir viloyat bo\'yicha narxi'),
                 dcc.Graph(id='bar_chart')
             ], style={'width': '48%', 'display': 'inline-block', 'margin-left': '18'}),
         ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'}),
+    ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'}),
         html.Div([
             html.Div([
-                html.H3('map'),
-                dcc.Graph(id='map', figure=fig)
+                dcc.Graph(id='map')
             ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'}),
-        ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'}),])])
+        ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'})])
 
 #callback Chart 1
 @app.callback(
@@ -130,9 +159,9 @@ app.layout = html.Div([
     [Input('tovar_name', 'value'),
     Input('month', 'value')])   
 
-def update_graph(x, y):
+def update_graph_1(x, y):
     chart_1 = df.tovar_name.value_counts(ascending=False).head(10)
-    fig = px.bar(y=chart_1.index, x=chart_1.values, color = chart_1.values, orientation='h', title='Количество контрактов', color_continuous_scale='icefire')
+    fig = px.bar(y=chart_1.index, x=chart_1.values, color=chart_1.values, orientation='h', title='Самые востребованные товары', color_continuous_scale='mint')
     #scale remove
     fig.update_layout(coloraxis_showscale=False)
     #white background
@@ -142,16 +171,18 @@ def update_graph(x, y):
 #callback Chart 2
 @app.callback(
     Output('price_10', 'figure'),
-    [Input('tovar_name', 'value'),
+    [Input('year', 'value'),
     Input('month', 'value')])
-def update_graph(x, y):
+def update_graph_2(x, y):
     #the most sold products that are the most expensive top 10
-    chart_2 = df.groupby('tovar_name')['tovar_summa'].count().sort_values(ascending=False).head(10)
-    fig = px.bar(y=chart_2.index, x=chart_2.values, color = chart_2.values, orientation='h', title='Количество контрактов', color_continuous_scale='icefire')
+    chart_2 = df.groupby('tovar_name')['tovar_price'].mean().sort_values(ascending=False).head(10)
+    fig = px.bar(y=chart_2.index, x=chart_2.values, orientation='h', title='Самые дорогие товары', color_continuous_scale='mint', color=chart_2.values)
     #scale remove
     fig.update_layout(coloraxis_showscale=False)
     #white background
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+    fig.update_xaxes(showticklabels=False)
+    fig.update_yaxes(showticklabels=False)
     return fig
 
 
@@ -160,27 +191,51 @@ def update_graph(x, y):
 @app.callback(
     Output('bar_line_chart', 'figure'),
     [Input('tovar_name', 'value'),
-    Input('vendor_terr', 'value')])
-def update_graph(x, y):
+    Input('year', 'value')])
+def update_graph_3(x, y):
     #for tovar_name 'Моноблок' show its average price for each month and draw a line chart with trend
-    chart_3 = df[df['tovar_name'] == 'Моноблок'].groupby('month')['tovar_summa'].mean()
-    fig = px.bar(x=chart_3.index, y=chart_3.values, title='Средняя цена моноблока по месяцам', color_continuous_scale='icefire')
+    chart_3 = df[df['tovar_name'] == x].groupby('month')['tovar_price'].mean()
+    fig = px.bar(x=chart_3.index, y=chart_3.values,title=f'Средняя цена по месяцам - {x}', color_continuous_scale='mint', color=chart_3.values)
     fig.add_trace(go.Scatter(x=chart_3.index, y=chart_3.values, mode='lines', name='trend'))
     #white background
-    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', coloraxis_showscale=False)
     return fig
 
 #callback Chart 4
 @app.callback(
     Output('bar_chart', 'figure'),
     [Input('tovar_name', 'value'),
-    Input('vendor_terr', 'value')])
-def update_graph(x, y):
-    #for tovar_name 'Моноблок' show its average price for each region and draw a bar chart
-    chart_4 = df[df['tovar_name'] == 'Моноблок'].groupby('name')['tovar_summa'].mean()
-    fig = px.bar(x=chart_4.index, y=chart_4.values, title='Средняя цена моноблока', color_continuous_scale='icefire')
+    Input('name', 'value')])
+def update_graph_4(x, y):
+    #take input from dropdown and show its average price for each region
+    chart_4 = df[df['tovar_name'] == x].groupby('name')['tovar_price'].mean()
+    fig = px.bar(x=chart_4.index, y=chart_4.values,color=chart_4.values, title=f'Средняя цена по регионам - {x}', color_continuous_scale='mint')
     #white background
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+    #fremove y x
+    fig.update_xaxes(showticklabels=False)
+    fig.update_yaxes(showticklabels=False)
+    return fig
+
+    #for tovar_name 'Моноблок' show its average price for each region and draw a bar chart
+    chart_4 = df[df['tovar_name'] == input].groupby('name')['tovar_price'].mean()
+    fig = px.bar(x=chart_4.index, y=chart_4.values, title='Средняя цена моноблока', color_continuous_scale='ice')
+    #white background
+    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+    return fig
+
+@app.callback(
+    Output('map', 'figure'),
+    [Input('tovar_name', 'value'),
+    Input('month', 'value')])
+def update_graph_5(x, y):
+    fig = px.choropleth_mapbox(df, geojson=geo_data, locations='id_y', featureidkey='properties.vendor_terr', color='counts', color_continuous_scale="mint",
+                            range_color=(df['counts'].min(), df['counts'].max()),               
+                            mapbox_style="carto-positron", zoom=5, 
+                            opacity=0.5, center={"lat": 41.377491, "lon": 64.585262},
+                            labels={'contract_dat':'Date of contract'}, title='Количество продаж по регионам')                      
+    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+    fig.update_geos(fitbounds="locations", visible=True)
     return fig
 
 
