@@ -15,10 +15,58 @@ import json
 import geojson
 import geoplot
 import geopandas
+from sqlalchemy import create_engine
 
 #dashboard
 app = dash.Dash(__name__, external_scripts=['https://cdn.plot.ly/plotly-geo-assets/1.0.0/plotly-geo-assets.js'], external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
 server = app.server
+
+#connect to database
+engine = create_engine('postgresql://postgres:postgres@localhost:5432/')
+conn = engine.connect()
+
+resultat_method = pd.read_sql_table('resultat_method', conn)
+rel_db = pd.read_sql_table('resultat_method_specifications', conn)
+specifications = pd.read_sql_table('specifications', conn)
+
+#contract
+contract = pd.read_sql_table('contract_info', conn)
+contract = contract.drop_duplicates(subset='response_id', keep='last', inplace=True)
+contract = contract[contract.state == 2]
+contract = contract.drop_duplicates('lot_id')
+
+#keep valid ones
+resultat_method = resultat_method[resultat_method['lot_id'].isin(contract['lot_id'])]
+resultat = resultat_method.merge(rel_db, left_on='id', right_on='resultat_method_id')
+df = resultat.merge(specifications, left_on='specifications_id', right_on='id')
+
+
+#process vendor data
+terr_dict = {
+    1703: 'Andijon viloyati',
+    1706: 'Buxoro viloyati',
+    1730: 'Farg\‘ona viloyati',
+    1708: 'Jizzax viloyati',
+    1735: 'Qoraqalpog\‘iston Respublikasi',
+    1710: 'Qashqadaryo viloyati',
+    1733: 'Xorazm viloyati',
+    1714: 'Namangan viloyati',
+    1712: 'Navoiy viloyati',
+    1718: 'Samarqand viloyati',
+    1724: 'Sirdaryo viloyati',
+    1722: 'Surxondaryo viloyati',
+    1726: 'Toshkent shahri',
+    1727: 'Toshkent viloyati'
+}
+df['vendor_terr'] = df['vendor_terr'] + 1700000
+df = df[df.vendor_terr != 1700000]
+df.vendor_terr = df.vendor_terr[df.vendor_terr.id.astype(str).str.len() == 4]
+df.vendor_terr = df.vendor_terr.astype(str)
+df['region_name'] = df['vendor_terr'].map(terr_dict)
+
+
+
+
 
 #data
 df = pd.read_csv('data/dashboard_df.csv', sep=',')
@@ -181,8 +229,8 @@ def update_graph_2(x, y):
     fig.update_layout(coloraxis_showscale=False)
     #white background
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-    fig.update_xaxes(showticklabels=False)
-    fig.update_yaxes(showticklabels=False)
+    fig.update_xaxes(title_text='Цена')
+    fig.update_yaxes(title_text='Товар')
     return fig
 
 

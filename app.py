@@ -155,8 +155,7 @@ def update_bar(n_clicks, cat_pick):
     fig_bar = px.bar(df,
                      x=bar_df.values,
                      y=bar_df.index,
-                     color=bar_df.values,
-                     color_continuous_scale='ice', 
+                     color_continuous_scale='icefire', 
                      )
 
     fig_bar.update_layout(width=600,
@@ -191,8 +190,8 @@ def tail_10(n_clicks, cont_pick):
 
     fig_bar = px.bar(df,
                      x=bar_df.values,
-                     y=bar_df.index, color=bar_df.values,
-                    color_continuous_scale='ice')
+                     y=bar_df.index,
+                    color_continuous_scale='icefire')
 
     fig_bar.update_layout(width=600,
                           height=400,
