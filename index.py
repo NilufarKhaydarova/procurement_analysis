@@ -21,6 +21,7 @@ import celery
 from celery import Celery
 from celery.schedules import crontab
 from process import df
+from callbacks import * 
 
 #dashboard
 app = dash.Dash(__name__, external_scripts=['https://cdn.plot.ly/plotly-geo-assets/1.0.0/plotly-geo-assets.js'], external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
@@ -60,7 +61,7 @@ app.layout = html.Div([
             html.Div([
                 html.H3('Выберите регион'),
                 dcc.Dropdown(
-                    id='name',
+                    id='region_name',
                     options=[{'label': i, 'value': i} for i in df.region_name.unique()]
                 ),
             ], style={'width': '16%', 'display': 'inline-block', 'margin-left': '16'}),
@@ -133,30 +134,45 @@ app.layout = html.Div([
             ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'}),
         ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'})])
 
-#callback Chart 1
+
 @app.callback(  
     Output('top_10', 'figure'),
     [Input('month', 'value'),
     Input('year', 'value'),
     Input('etp_id', 'value'),
     Input('proc_id', 'value'),
-    Input('name', 'value')])
+    Input('region_name', 'value')])
 
 def update_graph_1(x, y, z, a, b):
-    dff = df[(df['month'] == x) & (df['year'] == y) & (df['etp_id'] == z) & (df['proc_id'] == a) & (df['name'] == b)]
-    dff = dff.sort_values(by='price', ascending=False)
-    dff = dff.head(10)
-    fig = px.bar(dff, x='price', y='tovar_name', orientation='h', text='price', color='price')
+    if x:
+        df1 = df[df['month'] == x]
+    else:
+        df1 = df
+    if y:
+        df1 = df1[df1['year'] == y]
+    else:
+        df1 = df1
+    if z:
+        df1 = df1[df1['etp_id'] == z]
+    else:
+        df1 = df1
+    if a:
+        df1 = df1[df1['proc_id'] == a]
+    else:
+        df1 = df1
+    if b:
+        df1 = df1[df1['region_name'] == b]
+    else:
+        df1 = df1
+    df1 = df1.tovar_name.value_counts(ascending=False).head(10)
+    fig = px.bar(df1, x=df1.index, y=df1.values, orientation='v', color=df1.values, color_continuous_scale='mint')
     fig.update_layout(
         title='Топ 10 товаров',
         xaxis_title='Цена',
-        yaxis_title='Товар',
-        font=dict(
-            family="Courier New, monospace",
-            size=18,
-            color="#7f7f7f"
-        )
+        yaxis_title='Товар'
     )
+    fig.update_layout(coloraxis_showscale=False)
+    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
     return fig
 
 
@@ -169,17 +185,19 @@ def update_graph_1(x, y, z, a, b):
     Input('year', 'value'),
     Input('etp_id', 'value'),
     Input('proc_id', 'value'),
-    Input('name', 'value')])
+    Input('region_name', 'value')])
 def update_graph_2(x, y, z, a, b, c):
-    dff = df[(df['month'] == x) & (df['year'] == y) & (df['etp_id'] == z) & (df['proc_id'] == a) & (df['name'] == b)]
-    dff = dff.sort_values(by='price', ascending=False)
+    dff = df[(df['month'] == x) & (df['year'] == y) & (df['etp_id'] == z) & (df['proc_id'] == a) & (df['region_name'] == b)]
+    dff = dff.sort_values(by='tovar_price', ascending=False)
     dff = dff.head(10)
-    fig = px.bar(dff, x='tovar_name', y='price', color='price')
+    fig = px.bar(dff, x='tovar_name', y='tovar_price', color='tovar_price')
     fig.update_layout(
         title='Топ 10 товаров',
         xaxis_title='Товар',
         yaxis_title='Цена',
     )
+    fig.update_layout(coloraxis_showscale=False)
+    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
     return fig
     
 
@@ -189,7 +207,7 @@ def update_graph_2(x, y, z, a, b, c):
     Output('bar_line_chart', 'figure'),
     [Input('tovar_name', 'value'),
     Input('year', 'value'),
-    Input('name', 'value'),
+    Input('region_name', 'value'),
     Input('month', 'value'),
     Input('etp_id', 'value'),
     Input('proc_id', 'value')])
@@ -208,14 +226,14 @@ def update_graph_3(x, y, z, a, b, c):
 @app.callback(
     Output('bar_chart', 'figure'),
     [Input('tovar_name', 'value'),
-    Input('name', 'value'),
+    Input('region_name', 'value'),
     Input('month', 'value'),
     Input('etp_id', 'value'),
     Input('proc_id', 'value')])
 
 def update_graph_4(x, y, z, a, b):
     #take input from dropdown and show its average price for each region
-    chart_4 = df[df['tovar_name'] == x].groupby('name')['tovar_price'].mean()
+    chart_4 = df[df['tovar_name'] == x].groupby('region_name')['tovar_price'].mean()
     fig = px.bar(x=chart_4.index, y=chart_4.values,color=chart_4.values, title=f'Средняя цена по регионам - {x}', color_continuous_scale='mint')
     #white background
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
@@ -239,15 +257,18 @@ def update_graph_4(x, y, z, a, b):
     Input('etp_id', 'value'),
     Input('proc_id', 'value')])
 
-def update_graph_5(x, y, z, a, b):
-    fig = px.choropleth_mapbox(df, geojson=geo_data, locations='id_y', featureidkey='properties.vendor_terr', color='counts', color_continuous_scale="mint",
+def graph_5(input, month, year, etp_id, proc_id):
+    #choropleth map for counts 
+    fig = px.choropleth_mapbox(df, geojson=geo_data, locations='vendor_terr', featureidkey='properties.vendor_terr', color='counts', color_continuous_scale="mint",
                             range_color=(df['counts'].min(), df['counts'].max()),               
                             mapbox_style="carto-positron", zoom=5, 
                             opacity=0.5, center={"lat": 41.377491, "lon": 64.585262},
                             labels={'contract_dat':'Date of contract'}, title='Количество продаж по регионам')                      
     fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+    fig.update_layout(coloraxis_showscale=False)
     fig.update_geos(fitbounds="locations", visible=True)
     return fig
+
 
 
 if __name__ == '__main__':

@@ -49,11 +49,22 @@ def proc_id_process(df):
     df['proc_id'] = df['proc_id'].map(proc_dict)
     return df
 
+def vendor_ter_counts(df):
+    counts = df['vendor_terr'].value_counts()
+    df['counts'] = df['vendor_terr'].map(counts)
+    return df
+
+def etp_process(df):
+    df['etp_id'] = df['etp_id'].map(etp_dict)
+    return df
+
 def process(df):
 
     df = vendor_terr_process(df)
     df = contract_dat_process(df)
-
+    df = proc_id_process(df)
+    df = vendor_ter_counts(df)
+    df = etp_process(df)
     return df
 
-df = process(df)
+df = process(df)    

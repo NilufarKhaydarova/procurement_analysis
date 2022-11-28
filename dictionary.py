@@ -38,3 +38,9 @@ proc_dict = {
     18: 'Конкурс',
     19: 'Прямые договора'
 }
+
+etp_dict = {
+    1: 'UZEX',
+    2: 'XT-XARID',
+    3: 'SHAFFOF QURILISH'
+}
