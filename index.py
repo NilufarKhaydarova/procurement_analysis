@@ -1,11 +1,13 @@
 from calendar import monthrange
 from re import X
+from turtle import title
 import plotly.express as px
 import pandas as pd
 import dash
 from dash.dependencies import Input, Output, State
 from dash import html, dcc
 import dash_bootstrap_components as dbc
+from decouple import config
 
 #for plotting choropleth
 import plotly.graph_objects as go
@@ -15,84 +17,12 @@ import json
 import geojson
 import geoplot
 import geopandas
-from sqlalchemy import create_engine
+from processing import df
+
 
 #dashboard
 app = dash.Dash(__name__, external_scripts=['https://cdn.plot.ly/plotly-geo-assets/1.0.0/plotly-geo-assets.js'], external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
 server = app.server
-
-#connect to database
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/')
-conn = engine.connect()
-
-resultat_method = pd.read_sql_table('resultat_method', conn)
-rel_db = pd.read_sql_table('resultat_method_specifications', conn)
-specifications = pd.read_sql_table('specifications', conn)
-
-#contract
-contract = pd.read_sql_table('contract_info', conn)
-contract = contract.drop_duplicates(subset='response_id', keep='last', inplace=True)
-contract = contract[contract.state == 2]
-contract = contract.drop_duplicates('lot_id')
-
-#keep valid ones
-resultat_method = resultat_method[resultat_method['lot_id'].isin(contract['lot_id'])]
-resultat = resultat_method.merge(rel_db, left_on='id', right_on='resultat_method_id')
-df = resultat.merge(specifications, left_on='specifications_id', right_on='id')
-
-
-#process vendor data
-terr_dict = {
-    1703: 'Andijon viloyati',
-    1706: 'Buxoro viloyati',
-    1730: 'Farg\‘ona viloyati',
-    1708: 'Jizzax viloyati',
-    1735: 'Qoraqalpog\‘iston Respublikasi',
-    1710: 'Qashqadaryo viloyati',
-    1733: 'Xorazm viloyati',
-    1714: 'Namangan viloyati',
-    1712: 'Navoiy viloyati',
-    1718: 'Samarqand viloyati',
-    1724: 'Sirdaryo viloyati',
-    1722: 'Surxondaryo viloyati',
-    1726: 'Toshkent shahri',
-    1727: 'Toshkent viloyati'
-}
-df['vendor_terr'] = df['vendor_terr'] + 1700000
-df = df[df.vendor_terr != 1700000]
-df.vendor_terr = df.vendor_terr[df.vendor_terr.id.astype(str).str.len() == 4]
-df.vendor_terr = df.vendor_terr.astype(str)
-df['region_name'] = df['vendor_terr'].map(terr_dict)
-
-
-
-
-
-#data
-df = pd.read_csv('data/dashboard_df.csv', sep=',')
-df['contract_dat'] = pd.to_datetime(df['contract_dat'])
-df['contract_dat'] = df['contract_dat'].dt.strftime('%Y-%m-%d')
-df['contract_dat'] = pd.to_datetime(df['contract_dat'])
-
-#columnss
-vendor_terr = df['vendor_terr'].unique()
-contract_dat = pd.to_datetime(df['contract_dat'])
-month_dict = {1: 'Январь', 2:'Февраль', 3:'Март', 4:'Апрель', 5:'Май', 6:'Июнь', 7:'Июль', 8:'Август', 9:'Сентябрь', 10:'Октябрь', 11:'Ноябрь', 12:'Декабрь'}
-months = contract_dat.dt.month.unique()
-months_names = [month_dict[elem] for elem in months]
-
-df['month'] = df['contract_dat'].dt.month
-df['month'] = df['month'].apply(lambda x: month_dict[x])
-
-df['year'] = df['contract_dat'].dt.year
-
-
-
-#some preprocessing
-counts = df.vendor_terr.value_counts()  
-counts = counts.reset_index()
-
-df['counts'] = df['vendor_terr'].map(counts.set_index('index')['vendor_terr'])
 
 #choropleth
 with open('data/geo.json') as f:
@@ -137,7 +67,7 @@ app.layout = html.Div([
                 html.H3('Выберите месяц'),
                 dcc.Dropdown(
                     id='month',
-                    options=[{'label': i, 'value': i} for i in months_names]
+                    options=[{'label': i, 'value': i} for i in df['month'].unique()]
                 ),
             
             ], style={'width': '16%', 'display': 'inline-block', 'margin-left': '16'}),
@@ -169,10 +99,10 @@ app.layout = html.Div([
             ], style={'width': '16%', 'display': 'inline-block', 'margin-left': '16'}),
 
             html.Div([
-                html.H3('Выберите поставщика'),
+                html.H3('Выберите тип'),
                 dcc.Dropdown(
-                    id='vendor_name',
-                    options=[{'label': i, 'value': i} for i in df['vendor_name'].unique()]
+                    id='proc_id',
+                    options=[{'label': i, 'value': i} for i in df.proc_id.unique()]
                 ),
             ], style={'width': '16%', 'display': 'inline-block', 'margin-left': '16'}),
         ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '16'}),
@@ -202,67 +132,139 @@ app.layout = html.Div([
         ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'})])
 
 #callback Chart 1
-@app.callback(
+@app.callback(  
     Output('top_10', 'figure'),
-    [Input('tovar_name', 'value'),
-    Input('month', 'value')])   
+    [Input('month', 'value'),
+    Input('year', 'value'),
+    Input('etp_id', 'value'),
+    Input('proc_id', 'value'),
+    Input('name', 'value')])
 
-def update_graph_1(x, y):
-    chart_1 = df.tovar_name.value_counts(ascending=False).head(10)
-    fig = px.bar(y=chart_1.index, x=chart_1.values, color=chart_1.values, orientation='h', title='Самые востребованные товары', color_continuous_scale='mint')
-    #scale remove
-    fig.update_layout(coloraxis_showscale=False)
-    #white background
-    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+def update_graph_1(x, y, z, a, b):
+    #if x or y or z or a or b exists for input, then filter df by this value
+    if x:
+        df1 = df[df['month'] == x]
+    else:
+        df1 = df
+    if y:
+        df1 = df1[df1['year'] == y]
+    else:
+        df1 = df1
+    if z:
+        df1 = df1[df1['etp_id'] == z]
+    else:
+        df1 = df1
+    if a:
+        df1 = df1[df1['proc_id'] == a]
+    else:
+        df1 = df1
+    if b:
+        df1 = df1[df1['region_name'] == b]
+    else:
+        df1 = df1
+
+    #value counts tovar name and take top 10
+    df1 = df1['tovar_name'].value_counts().head(10)
+    df1 = df1.reset_index()
+    df1.columns = ['tovar_name', 'count']
+
+    #create figure
+    fig = px.bar(df1, x='tovar_name', y='count', color='count', color_continuous_scale='mint', orientation='h')
+    fig.update_layout(
+        title='Топ 10 товаров',
+        xaxis_title='Товар',
+        yaxis_title='Количество')
+    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', coloraxis_showscale=False)
     return fig
+
 
 #callback Chart 2
 @app.callback(
     Output('price_10', 'figure'),
     [Input('year', 'value'),
-    Input('month', 'value')])
-def update_graph_2(x, y):
-    #the most sold products that are the most expensive top 10
-    chart_2 = df.groupby('tovar_name')['tovar_price'].mean().sort_values(ascending=False).head(10)
-    fig = px.bar(y=chart_2.index, x=chart_2.values, orientation='h', title='Самые дорогие товары', color_continuous_scale='mint', color=chart_2.values)
-    #scale remove
-    fig.update_layout(coloraxis_showscale=False)
-    #white background
-    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-    fig.update_xaxes(title_text='Цена')
-    fig.update_yaxes(title_text='Товар')
-    return fig
+    Input('month', 'value'),
+    Input('year', 'value'),
+    Input('etp_id', 'value'),
+    Input('proc_id', 'value'),
+    Input('name', 'value')])
+def update_graph_2(x, y, z, a, b, c):
+    #the most expensive 10 products
+    if x:
+        df2 = df[df['year'] == x]
+    else:
+        df2 = df
+    if y:
+        df2 = df2[df2['month'] == y]
+    else:
+        df2 = df2
+    if z:
+        df2 = df2[df2['year'] == z]
+    else:
+        df2 = df2
+    if a:
+        df2 = df2[df2['etp_id'] == a]
+    else:
+        df2 = df2
+    if b:
+        df2 = df2[df2['proc_id'] == b]
+    else:
+        df2 = df2
+    if c:
+        df2 = df2[df2['region_name'] == c]  
+    else:
+        df2 = df2
 
+    df2 = df2.sort_values(by='tovar_summa', ascending=False).head(10)
+    df2.columns = ['tovar_name', 'tovar_summa', 'month', 'year', 'etp_id', 'proc_id', 'region_name']
+
+    fig = px.bar(df2, x='tovar_name', y='tovar_summa', color='tovar_summa', color_continuous_scale='mint', orientation='h')
+    fig.update_layout(
+        title='Топ 10 товаров по сумме',
+        xaxis_title='Товар',
+        yaxis_title='Сумма')
+    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', coloraxis_showscale=False)
+    return fig
+    
 
 
 #callback Chart 3
 @app.callback(
     Output('bar_line_chart', 'figure'),
     [Input('tovar_name', 'value'),
-    Input('year', 'value')])
-def update_graph_3(x, y):
+    Input('year', 'value'),
+    Input('name', 'value'),
+    Input('month', 'value'),
+    Input('etp_id', 'value'),
+    Input('proc_id', 'value')])
+def update_graph_3(x, y, z, a, b, c):
     #for tovar_name 'Моноблок' show its average price for each month and draw a line chart with trend
     chart_3 = df[df['tovar_name'] == x].groupby('month')['tovar_price'].mean()
     fig = px.bar(x=chart_3.index, y=chart_3.values,title=f'Средняя цена по месяцам - {x}', color_continuous_scale='mint', color=chart_3.values)
     fig.add_trace(go.Scatter(x=chart_3.index, y=chart_3.values, mode='lines', name='trend'))
     #white background
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', coloraxis_showscale=False)
+    fig.update_xaxes(title_text='Месяц')
+    fig.update_yaxes(title_text='Цена')
     return fig
 
 #callback Chart 4
 @app.callback(
     Output('bar_chart', 'figure'),
     [Input('tovar_name', 'value'),
-    Input('name', 'value')])
-def update_graph_4(x, y):
+    Input('name', 'value'),
+    Input('month', 'value'),
+    Input('etp_id', 'value'),
+    Input('proc_id', 'value')])
+
+def update_graph_4(x, y, z, a, b):
     #take input from dropdown and show its average price for each region
     chart_4 = df[df['tovar_name'] == x].groupby('name')['tovar_price'].mean()
     fig = px.bar(x=chart_4.index, y=chart_4.values,color=chart_4.values, title=f'Средняя цена по регионам - {x}', color_continuous_scale='mint')
     #white background
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
     #fremove y x
-    fig.update_xaxes(showticklabels=False)
-    fig.update_yaxes(showticklabels=False)
+    fig.update_xaxes(title_text='Регион')
+    fig.update_yaxes(title_text='Цена')
     return fig
 
     #for tovar_name 'Моноблок' show its average price for each region and draw a bar chart
@@ -275,8 +277,12 @@ def update_graph_4(x, y):
 @app.callback(
     Output('map', 'figure'),
     [Input('tovar_name', 'value'),
-    Input('month', 'value')])
-def update_graph_5(x, y):
+    Input('month', 'value'), 
+    Input('year', 'value'),
+    Input('etp_id', 'value'),
+    Input('proc_id', 'value')])
+
+def update_graph_5(x, y, z, a, b):
     fig = px.choropleth_mapbox(df, geojson=geo_data, locations='id_y', featureidkey='properties.vendor_terr', color='counts', color_continuous_scale="mint",
                             range_color=(df['counts'].min(), df['counts'].max()),               
                             mapbox_style="carto-positron", zoom=5, 
