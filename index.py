@@ -17,8 +17,10 @@ import json
 import geojson
 import geoplot
 import geopandas
-from processing import df
-
+import celery
+from celery import Celery
+from celery.schedules import crontab
+from process import df
 
 #dashboard
 app = dash.Dash(__name__, external_scripts=['https://cdn.plot.ly/plotly-geo-assets/1.0.0/plotly-geo-assets.js'], external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
@@ -59,7 +61,7 @@ app.layout = html.Div([
                 html.H3('Выберите регион'),
                 dcc.Dropdown(
                     id='name',
-                    options=[{'label': i, 'value': i} for i in df.name.unique()]
+                    options=[{'label': i, 'value': i} for i in df.region_name.unique()]
                 ),
             ], style={'width': '16%', 'display': 'inline-block', 'margin-left': '16'}),
 
@@ -141,41 +143,22 @@ app.layout = html.Div([
     Input('name', 'value')])
 
 def update_graph_1(x, y, z, a, b):
-    #if x or y or z or a or b exists for input, then filter df by this value
-    if x:
-        df1 = df[df['month'] == x]
-    else:
-        df1 = df
-    if y:
-        df1 = df1[df1['year'] == y]
-    else:
-        df1 = df1
-    if z:
-        df1 = df1[df1['etp_id'] == z]
-    else:
-        df1 = df1
-    if a:
-        df1 = df1[df1['proc_id'] == a]
-    else:
-        df1 = df1
-    if b:
-        df1 = df1[df1['region_name'] == b]
-    else:
-        df1 = df1
-
-    #value counts tovar name and take top 10
-    df1 = df1['tovar_name'].value_counts().head(10)
-    df1 = df1.reset_index()
-    df1.columns = ['tovar_name', 'count']
-
-    #create figure
-    fig = px.bar(df1, x='tovar_name', y='count', color='count', color_continuous_scale='mint', orientation='h')
+    dff = df[(df['month'] == x) & (df['year'] == y) & (df['etp_id'] == z) & (df['proc_id'] == a) & (df['name'] == b)]
+    dff = dff.sort_values(by='price', ascending=False)
+    dff = dff.head(10)
+    fig = px.bar(dff, x='price', y='tovar_name', orientation='h', text='price', color='price')
     fig.update_layout(
         title='Топ 10 товаров',
-        xaxis_title='Товар',
-        yaxis_title='Количество')
-    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', coloraxis_showscale=False)
+        xaxis_title='Цена',
+        yaxis_title='Товар',
+        font=dict(
+            family="Courier New, monospace",
+            size=18,
+            color="#7f7f7f"
+        )
+    )
     return fig
+
 
 
 #callback Chart 2
@@ -188,41 +171,15 @@ def update_graph_1(x, y, z, a, b):
     Input('proc_id', 'value'),
     Input('name', 'value')])
 def update_graph_2(x, y, z, a, b, c):
-    #the most expensive 10 products
-    if x:
-        df2 = df[df['year'] == x]
-    else:
-        df2 = df
-    if y:
-        df2 = df2[df2['month'] == y]
-    else:
-        df2 = df2
-    if z:
-        df2 = df2[df2['year'] == z]
-    else:
-        df2 = df2
-    if a:
-        df2 = df2[df2['etp_id'] == a]
-    else:
-        df2 = df2
-    if b:
-        df2 = df2[df2['proc_id'] == b]
-    else:
-        df2 = df2
-    if c:
-        df2 = df2[df2['region_name'] == c]  
-    else:
-        df2 = df2
-
-    df2 = df2.sort_values(by='tovar_summa', ascending=False).head(10)
-    df2.columns = ['tovar_name', 'tovar_summa', 'month', 'year', 'etp_id', 'proc_id', 'region_name']
-
-    fig = px.bar(df2, x='tovar_name', y='tovar_summa', color='tovar_summa', color_continuous_scale='mint', orientation='h')
+    dff = df[(df['month'] == x) & (df['year'] == y) & (df['etp_id'] == z) & (df['proc_id'] == a) & (df['name'] == b)]
+    dff = dff.sort_values(by='price', ascending=False)
+    dff = dff.head(10)
+    fig = px.bar(dff, x='tovar_name', y='price', color='price')
     fig.update_layout(
-        title='Топ 10 товаров по сумме',
+        title='Топ 10 товаров',
         xaxis_title='Товар',
-        yaxis_title='Сумма')
-    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', coloraxis_showscale=False)
+        yaxis_title='Цена',
+    )
     return fig
     
 
