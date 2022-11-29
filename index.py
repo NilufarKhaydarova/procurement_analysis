@@ -1,7 +1,3 @@
-from calendar import monthrange
-from ipaddress import summarize_address_range
-from re import X
-from turtle import title
 import plotly.express as px
 import pandas as pd
 import dash
@@ -9,9 +5,6 @@ from dash.dependencies import Input, Output, State
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 from decouple import config
-from xhtml2pdf import pisa 
-import pdfkit
-import time
 import dash
 
 #for plotting choropleth
@@ -19,13 +12,6 @@ import plotly.graph_objects as go
 import plotly.figure_factory as ff
 import plotly.graph_objs as go
 import json
-import geojson
-import geoplot
-import geopandas
-import celery
-from celery import Celery
-from celery.schedules import crontab
-from process import df
 from callbacks import * 
 
 #dashboard
@@ -286,21 +272,22 @@ def update_graph_4(tovar_name, month_bar, quarter_bar):
 )
 def graph_5(map_type):
     if map_type == 'По количеству покупателей':
-        chart_5 = df.groupby('vendor_terr')['inn'].count().reset_index()
+        chart_5 = df.groupby('vendor_terr')['inn'].nunique().reset_index()
         set_color = 'inn'
     elif map_type == 'По сумме закупок':
         chart_5 = df.groupby('vendor_terr')['p_summa'].sum().reset_index()
-        set_color = 'summa'
+        set_color = 'p_summa'
     elif map_type == 'По количеству закупок':
         chart_5 = df.groupby('vendor_terr')['lot_id'].count().reset_index()
         set_color = 'lot_id'
     else:
-        chart_5 = df.groupby('vendor_terr')['vendor_inn'].count().reset_index()
+        chart_5 = df.groupby('vendor_terr')['vendor_inn'].nunique().reset_index()
         set_color = 'vendor_inn'
 
     #choropleth map for counts 
     fig = px.choropleth_mapbox(chart_5, geojson=geo_data, locations='vendor_terr', featureidkey='properties.vendor_terr', color=set_color, color_continuous_scale="mint",
-                            range_color=(df['counts'].min(), df['counts'].max()),               
+                            #range color should change depending on the map type
+                            range_color=(chart_5[set_color].min(), chart_5[set_color].max()),
                             mapbox_style="carto-positron", zoom=5, 
                             opacity=0.5, center={"lat": 41.377491, "lon": 64.585262},
                             labels={'contract_dat':'Date of contract'}, title='Количество продаж по регионам')                      

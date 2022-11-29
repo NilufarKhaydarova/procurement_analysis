@@ -32,17 +32,23 @@ def vendor_terr_process(df):
 
 def summa_process(df):
     #turn summa, tovar_price, tovar_summa into int, if nan, turn into 0
+
     df['p_summa'] = df['p_summa'].fillna(0)
     df['p_summa'] = df['p_summa'].astype(int)
-
-    df['tovar_price'] = df['tovar_price'].fillna(0)
-    df['tovar_price'] = df['tovar_price'].astype(int)
 
     df['tovar_summa'] = df['tovar_summa'].fillna(0)
     df['tovar_summa'] = df['tovar_summa'].astype(int)
 
-    return df
+    df['tovar_summa'] = df['tovar_amount'].fillna(0)
+    df['tovar_summa'] = df['tovar_amount'].astype(int)
 
+    #divide tovar_summa by tovar_amount and create column tovar_price
+    #df['tovar_price'] = df['tovar_summa'] / df['tovar_amount']
+
+    df['tovar_price'] = df['tovar_price'].fillna(0)
+    df['tovar_price'] = df['tovar_price'].astype(int)
+
+    return df
 
 
 def contract_dat_process(df):
@@ -84,4 +90,7 @@ def process(df):
     df = summa_process(df)
     return df
 
+
 df = process(df)    
+
+

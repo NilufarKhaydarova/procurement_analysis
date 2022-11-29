@@ -31,6 +31,3 @@ resultat_method = resultat_method[resultat_method['lot_id'].isin(contract['lot_i
 
 resultat = resultat_method.merge(rel_db, left_on='id', right_on='resultat_method_id')
 df = resultat.merge(specifications, left_on='specifications_id', right_on='id')
-
-
-
