@@ -12,37 +12,27 @@ import plotly.graph_objects as go
 import plotly.figure_factory as ff
 import plotly.graph_objs as go
 import json
-from callbacks import * 
+from callbacks import *
+from process import df 
+
 
 #dashboard
-app = dash.Dash(__name__, external_scripts=['https://cdn.plot.ly/plotly-geo-assets/1.0.0/plotly-geo-assets.js'], external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
-server = app.server
+app = dash.Dash(__name__, external_scripts=['https://cdn.plot.ly/plotly-geo-assets/1.0.0/plotly-geo-assets.js'], external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'], use_pages=True)
+
 
 #choropleth
 with open('data/geo.json') as f:
     geo_data = json.load(f)
 
+#pages layout
+app.layout = html.Div([
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content')
+])
 
-#define navbar
-def Navbar():
+#top
 
-    layout = html.Div([
-        dbc.NavbarSimple(
-            children=[
-                dbc.NavItem(dbc.NavLink("Page 1", href="/page1")),
-                dbc.NavItem(dbc.NavLink("Page 2", href="/page2")),
-            ] ,
-            brand="Multipage Dash App",
-            brand_href="/page1",
-            color="dark",
-            dark=True,
-        ), 
-    ])
-
-    return layout
-
-
-#layout for 4 charts and 1 choropleth
+#home page
 app.layout = html.Div([
     html.Div([
         html.H1('DXMAP', style={'margin-top': '12px', 'margin-left': '18'})
@@ -165,9 +155,10 @@ app.layout = html.Div([
             html.Div([
                 dcc.Graph(id='map')
             ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'}),
-        ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'})
-    ])
+        ], style={'width': '100%', 'display': 'inline-block', 'margin-left': '18'}),
 
+        dash.page_container
+    ])
 
 @app.callback(  
     Output('top_10', 'figure'),
@@ -210,8 +201,6 @@ def update_graph_1(month, year, etp_id, proc_id, region_name):
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
     return fig
 
-
-
 #callback Chart 3
 @app.callback(
     Output('bar_line_chart', 'figure'),
@@ -236,6 +225,7 @@ def update_graph_3(tovar_name, region_bar):
     #remove legend
     fig.update_layout(showlegend=False)
     return fig
+
 
 
 #callback Chart 4

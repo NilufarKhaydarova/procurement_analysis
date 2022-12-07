@@ -9,12 +9,3 @@ def load_data():
 
     for name in names:  
         globals()[name] = pd.read_csv(data_path+name+'.dat')
-
-    
-
-
-
-        
-
-
-
