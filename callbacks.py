@@ -3,7 +3,7 @@
 # Path: callbacks.py
 # Compare this snippet from index.py:
 
-
+'''
 import dash
 import pandas as pd
 import numpy as np
@@ -47,4 +47,4 @@ def update_top_10(name, year, month, proc_id):
 
 
 
-
+'''

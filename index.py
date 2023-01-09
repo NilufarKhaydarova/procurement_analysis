@@ -13,6 +13,7 @@ import plotly.figure_factory as ff
 import plotly.graph_objs as go
 import json
 from callbacks import * 
+from process import df
 
 #dashboard
 app = dash.Dash(__name__, external_scripts=['https://cdn.plot.ly/plotly-geo-assets/1.0.0/plotly-geo-assets.js'], external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
@@ -211,12 +212,12 @@ def update_graph_1(month, year, etp_id, proc_id, region_name):
     return fig
 
 
-
 #callback Chart 3
 @app.callback(
     Output('bar_line_chart', 'figure'),
     [Input('tovar_name', 'value'),
-    Input('region_bar', 'value')])
+    Input('region_bar', 'value'), 
+    Input('year', 'value')])
 def update_graph_3(tovar_name, region_bar):
     if region_bar:
         df3 = df[df['region_name'] == region_bar]
@@ -243,7 +244,8 @@ def update_graph_3(tovar_name, region_bar):
     Output('bar_chart', 'figure'),
     [Input('tovar_name', 'value'),
     Input('month_bar', 'value'),
-    Input('quarter_bar', 'value')])
+    Input('quarter_bar', 'value'),
+    Input('year', 'value')])
 def update_graph_4(tovar_name, month_bar, quarter_bar):
     if month_bar:
         df4 = df[df['month'] == month_bar]
@@ -268,8 +270,10 @@ def update_graph_4(tovar_name, month_bar, quarter_bar):
 
 @app.callback(
     Output('map', 'figure'),
-    [Input('map_type', 'value')]
-)
+    [Input('map_type', 'value')
+    #Input('year', 'value')#
+    ])
+
 def graph_5(map_type):
     if map_type == 'По количеству покупателей':
         chart_5 = df.groupby('vendor_terr')['inn'].nunique().reset_index()
