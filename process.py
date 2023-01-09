@@ -48,6 +48,11 @@ def summa_process(df):
     df['tovar_price'] = df['tovar_price'].fillna(0)
     df['tovar_price'] = df['tovar_price'].astype(int)
 
+    #divide all 3 columns by 100
+    df['p_summa'] = df['p_summa'] / 100
+    df['tovar_summa'] = df['tovar_summa'] / 100
+    df['tovar_price'] = df['tovar_price'] / 100
+
     return df
 
 
